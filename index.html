@@ -343,9 +343,41 @@
     const loadBar  = document.getElementById('loading-bar');
     const machine  = document.getElementById('machine');
 
+    // Outcome probabilities: JACKPOT 5%, WIN 10%, MISS 85%
+    const P_JACKPOT = 0.05;
+    const P_WIN     = 0.10;
+    let planned = [0, 0, 0];
+
     function randId() { return Math.floor(Math.random() * TOTAL) + 1; }
+    function randIdExcept(excludeId) {
+      let id;
+      do { id = randId(); } while (id === excludeId);
+      return id;
+    }
     function spriteUrl(id) {
       return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
+    }
+
+    function determineOutcome() {
+      const roll = Math.random();
+      if (roll < P_JACKPOT) {
+        const id = randId();
+        planned = [id, id, id];
+      } else if (roll < P_JACKPOT + P_WIN) {
+        const id = randId();
+        const other = randIdExcept(id);
+        // Randomly pick which reel is the odd one out (0, 1, or 2)
+        const odd = Math.floor(Math.random() * 3);
+        planned = [id, id, id];
+        planned[odd] = other;
+      } else {
+        // All three different
+        const a = randId();
+        const b = randIdExcept(a);
+        let c;
+        do { c = randId(); } while (c === a || c === b);
+        planned = [a, b, c];
+      }
     }
 
     function setReel(i, id) {
@@ -361,7 +393,7 @@
 
     function stopSpin(i) {
       clearInterval(intervals[i]);
-      const id = randId();
+      const id = planned[i];
       results[i] = id;
       setReel(i, id);
       reelEls[i].classList.remove('spinning');
@@ -434,6 +466,7 @@
       deltaEl.classList.remove('show');
       reelEls.forEach(r => r.classList.remove('matched'));
 
+      determineOutcome();
       startSpin(0); startSpin(1); startSpin(2);
 
       setTimeout(() => stopSpin(0), 900);
