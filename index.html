@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ポケモンスロット</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0a0a1a;
+      color: #fff;
+      font-family: 'Press Start 2P', monospace;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    h1 {
+      color: #ffd700;
+      text-shadow: 0 0 12px #ffd700, 0 0 24px #ff8c00;
+      font-size: clamp(0.65rem, 2.5vw, 1.2rem);
+      margin-bottom: 28px;
+      text-align: center;
+      letter-spacing: 2px;
+      animation: title-glow 2s ease-in-out infinite alternate;
+    }
+
+    @keyframes title-glow {
+      from { text-shadow: 0 0 8px #ffd700, 0 0 16px #ff8c00; }
+      to   { text-shadow: 0 0 18px #ffd700, 0 0 36px #ff8c00, 0 0 54px #ffcc00; }
+    }
+
+    .machine {
+      background: linear-gradient(180deg, #2a2a4e 0%, #1a1a30 100%);
+      border: 4px solid #ffd700;
+      border-radius: 20px;
+      padding: 28px 24px;
+      box-shadow:
+        0 0 40px rgba(255, 215, 0, 0.25),
+        inset 0 0 40px rgba(0, 0, 0, 0.4);
+      max-width: 460px;
+      width: 100%;
+      transition: box-shadow 0.3s;
+    }
+
+    .machine.jackpot {
+      animation: jackpot-flash 0.3s steps(1) 6;
+    }
+
+    @keyframes jackpot-flash {
+      0%, 100% { box-shadow: 0 0 40px rgba(255,215,0,0.25), inset 0 0 40px rgba(0,0,0,0.4); border-color: #ffd700; }
+      50%       { box-shadow: 0 0 80px rgba(255,215,0,0.9), inset 0 0 60px rgba(255,215,0,0.2); border-color: #fff; }
+    }
+
+    /* ---------- Reels ---------- */
+    .reels-container {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 18px;
+    }
+
+    .reel {
+      background: #0c0c1c;
+      border: 3px solid #333;
+      border-radius: 10px;
+      flex: 1;
+      max-width: 130px;
+      height: 148px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      transition: border-color 0.15s;
+      position: relative;
+    }
+
+    .reel::before, .reel::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0;
+      height: 24px;
+      pointer-events: none;
+      z-index: 2;
+    }
+    .reel::before { top: 0;    background: linear-gradient(to bottom, #0c0c1c, transparent); }
+    .reel::after  { bottom: 0; background: linear-gradient(to top,   #0c0c1c, transparent); }
+
+    .reel.spinning {
+      border-color: #ffd700;
+      animation: reel-shake 0.12s ease-in-out infinite;
+    }
+
+    .reel.stopping {
+      border-color: #00ff88;
+      animation: reel-bounce 0.25s ease-out;
+    }
+
+    .reel.matched {
+      border-color: #ffd700;
+      box-shadow: 0 0 14px #ffd700;
+    }
+
+    @keyframes reel-shake {
+      0%, 100% { transform: translateY(0px); }
+      33%       { transform: translateY(-3px); }
+      66%       { transform: translateY(2px); }
+    }
+
+    @keyframes reel-bounce {
+      0%   { transform: scale(1.08); }
+      60%  { transform: scale(0.97); }
+      100% { transform: scale(1); }
+    }
+
+    .reel img {
+      width: 84px;
+      height: 84px;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      filter: drop-shadow(0 0 4px rgba(255,255,255,0.15));
+    }
+
+    .reel.spinning img {
+      filter: blur(1.5px) drop-shadow(0 0 4px rgba(255,215,0,0.4));
+    }
+
+    .reel-name {
+      font-size: 0.38rem;
+      color: #aaa;
+      text-transform: capitalize;
+      margin-top: 6px;
+      text-align: center;
+      padding: 0 4px;
+      max-width: 100%;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    /* ---------- Coins ---------- */
+    .coins-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      font-size: 0.55rem;
+      color: #ffd700;
+    }
+
+    .coins-value {
+      font-size: 1.1rem;
+      color: #fff;
+      min-width: 4ch;
+      text-align: right;
+    }
+
+    /* ---------- Message ---------- */
+    .message {
+      text-align: center;
+      font-size: 0.75rem;
+      min-height: 1.4rem;
+      margin-bottom: 16px;
+      letter-spacing: 1px;
+      transition: color 0.2s;
+    }
+
+    .message.win {
+      color: #00ff88;
+      text-shadow: 0 0 12px #00ff88;
+      animation: win-pulse 0.5s ease-out;
+    }
+
+    .message.jackpot-msg {
+      color: #ffd700;
+      text-shadow: 0 0 16px #ffd700, 0 0 32px #ff8c00;
+      animation: win-pulse 0.4s ease-out 3;
+    }
+
+    .message.miss {
+      color: #ff4455;
+    }
+
+    .message.gameover {
+      color: #ff4455;
+      text-shadow: 0 0 10px #ff4455;
+      animation: win-pulse 0.6s ease-out infinite alternate;
+    }
+
+    @keyframes win-pulse {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.12); }
+      100% { transform: scale(1); }
+    }
+
+    /* ---------- Coin delta ---------- */
+    .coin-delta {
+      text-align: center;
+      font-size: 0.55rem;
+      min-height: 1rem;
+      margin-bottom: 12px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .coin-delta.show {
+      opacity: 1;
+      animation: fade-up 1.4s ease forwards;
+    }
+
+    @keyframes fade-up {
+      0%   { opacity: 1; transform: translateY(0); }
+      70%  { opacity: 1; transform: translateY(-8px); }
+      100% { opacity: 0; transform: translateY(-16px); }
+    }
+
+    /* ---------- Buttons ---------- */
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.75rem;
+      cursor: pointer;
+      border-radius: 10px;
+      border: none;
+      transition: transform 0.08s, box-shadow 0.08s;
+      letter-spacing: 1px;
+    }
+
+    .btn:active:not(:disabled) {
+      transform: translateY(3px);
+      box-shadow: none !important;
+    }
+
+    #spin-btn {
+      background: linear-gradient(180deg, #ff7b00 0%, #cc4400 100%);
+      color: #fff;
+      border: 2px solid #ff9500;
+      box-shadow: 0 5px 0 #882200, 0 0 20px rgba(255,123,0,0.35);
+      text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+      margin-bottom: 10px;
+    }
+
+    #spin-btn:disabled {
+      background: linear-gradient(180deg, #3a3a3a, #222);
+      border-color: #555;
+      box-shadow: none;
+      color: #666;
+      cursor: not-allowed;
+    }
+
+    #reset-btn {
+      background: linear-gradient(180deg, #0077ff 0%, #0044bb 100%);
+      color: #fff;
+      border: 2px solid #0099ff;
+      box-shadow: 0 5px 0 #002288, 0 0 20px rgba(0,136,255,0.35);
+      text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+      display: none;
+    }
+
+    /* ---------- Loading overlay ---------- */
+    .loading-bar {
+      text-align: center;
+      font-size: 0.42rem;
+      color: #666;
+      margin-bottom: 10px;
+      min-height: 0.8rem;
+    }
+
+    /* ---------- Pachimon label ---------- */
+    .label-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      font-size: 0.38rem;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎰 ポケモン スロット 🎰</h1>
+
+  <div class="machine" id="machine">
+    <div class="label-row">
+      <span>GEN.I / 151</span>
+      <span>PokeAPI</span>
+    </div>
+
+    <div class="reels-container">
+      <div class="reel" id="reel-0">
+        <img id="img-0" src="" alt="">
+        <span class="reel-name" id="name-0">...</span>
+      </div>
+      <div class="reel" id="reel-1">
+        <img id="img-1" src="" alt="">
+        <span class="reel-name" id="name-1">...</span>
+      </div>
+      <div class="reel" id="reel-2">
+        <img id="img-2" src="" alt="">
+        <span class="reel-name" id="name-2">...</span>
+      </div>
+    </div>
+
+    <div class="coins-row">
+      <span>COINS</span>
+      <span class="coins-value" id="coins">100</span>
+    </div>
+
+    <div class="message" id="message"></div>
+    <div class="coin-delta" id="coin-delta"></div>
+
+    <button class="btn" id="spin-btn" disabled>SPIN</button>
+    <button class="btn" id="reset-btn">RETRY</button>
+
+    <div class="loading-bar" id="loading-bar">Loading Pokémon data...</div>
+  </div>
+
+  <script>
+    const TOTAL = 151;
+    let names = {};
+    let coins = 100;
+    let spinning = false;
+    let over = false;
+    let intervals = [null, null, null];
+    let results = [0, 0, 0];
+
+    const reelEls  = [0,1,2].map(i => document.getElementById(`reel-${i}`));
+    const imgEls   = [0,1,2].map(i => document.getElementById(`img-${i}`));
+    const nameEls  = [0,1,2].map(i => document.getElementById(`name-${i}`));
+    const coinsEl  = document.getElementById('coins');
+    const msgEl    = document.getElementById('message');
+    const deltaEl  = document.getElementById('coin-delta');
+    const spinBtn  = document.getElementById('spin-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const loadBar  = document.getElementById('loading-bar');
+    const machine  = document.getElementById('machine');
+
+    function randId() { return Math.floor(Math.random() * TOTAL) + 1; }
+    function spriteUrl(id) {
+      return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`;
+    }
+
+    function setReel(i, id) {
+      imgEls[i].src = spriteUrl(id);
+      nameEls[i].textContent = names[id] || `#${id}`;
+    }
+
+    function startSpin(i) {
+      reelEls[i].classList.add('spinning');
+      reelEls[i].classList.remove('matched');
+      intervals[i] = setInterval(() => setReel(i, randId()), 80);
+    }
+
+    function stopSpin(i) {
+      clearInterval(intervals[i]);
+      const id = randId();
+      results[i] = id;
+      setReel(i, id);
+      reelEls[i].classList.remove('spinning');
+      reelEls[i].classList.add('stopping');
+      setTimeout(() => reelEls[i].classList.remove('stopping'), 300);
+    }
+
+    function showDelta(amount) {
+      deltaEl.classList.remove('show');
+      void deltaEl.offsetWidth;
+      deltaEl.textContent = amount > 0 ? `+${amount}` : `${amount}`;
+      deltaEl.style.color = amount > 0 ? '#00ff88' : '#ff4455';
+      deltaEl.classList.add('show');
+    }
+
+    function evaluate() {
+      const [a, b, c] = results;
+      let change = 0;
+      let msgText = '';
+      let msgClass = '';
+
+      if (a === b && b === c) {
+        change = 100;
+        msgText = '🎰 JACKPOT!! 🎰';
+        msgClass = 'jackpot-msg';
+        machine.classList.add('jackpot');
+        setTimeout(() => machine.classList.remove('jackpot'), 1800);
+        reelEls.forEach(r => r.classList.add('matched'));
+      } else if (a === b || b === c || a === c) {
+        change = 10;
+        msgText = '✨ WIN! ✨';
+        msgClass = 'win';
+        if (a === b) { reelEls[0].classList.add('matched'); reelEls[1].classList.add('matched'); }
+        if (b === c) { reelEls[1].classList.add('matched'); reelEls[2].classList.add('matched'); }
+        if (a === c) { reelEls[0].classList.add('matched'); reelEls[2].classList.add('matched'); }
+      } else {
+        change = -5;
+        msgText = 'MISS...';
+        msgClass = 'miss';
+      }
+
+      coins += change;
+      if (coins < 0) coins = 0;
+      coinsEl.textContent = coins;
+      showDelta(change);
+
+      msgEl.className = 'message ' + msgClass;
+      msgEl.textContent = msgText;
+
+      if (coins === 0) {
+        setTimeout(() => {
+          msgEl.className = 'message gameover';
+          msgEl.textContent = 'GAME OVER';
+          resetBtn.style.display = 'block';
+          over = true;
+        }, 800);
+      } else {
+        spinBtn.disabled = false;
+      }
+
+      spinning = false;
+    }
+
+    spinBtn.addEventListener('click', () => {
+      if (spinning || over) return;
+      spinning = true;
+      spinBtn.disabled = true;
+      msgEl.className = 'message';
+      msgEl.textContent = '';
+      deltaEl.classList.remove('show');
+      reelEls.forEach(r => r.classList.remove('matched'));
+
+      startSpin(0); startSpin(1); startSpin(2);
+
+      setTimeout(() => stopSpin(0), 900);
+      setTimeout(() => stopSpin(1), 1700);
+      setTimeout(() => { stopSpin(2); setTimeout(evaluate, 350); }, 2500);
+    });
+
+    resetBtn.addEventListener('click', () => {
+      coins = 100;
+      over = false;
+      coinsEl.textContent = coins;
+      msgEl.className = 'message';
+      msgEl.textContent = '';
+      deltaEl.classList.remove('show');
+      reelEls.forEach(r => r.classList.remove('matched'));
+      resetBtn.style.display = 'none';
+      spinBtn.disabled = false;
+    });
+
+    async function init() {
+      try {
+        const res = await fetch('https://pokeapi.co/api/v2/pokemon?limit=151');
+        const data = await res.json();
+        data.results.forEach((p, i) => { names[i + 1] = p.name; });
+        loadBar.textContent = '';
+        for (let i = 0; i < 3; i++) setReel(i, randId());
+        spinBtn.disabled = false;
+      } catch (e) {
+        loadBar.textContent = 'Load failed — retrying...';
+        setTimeout(init, 3000);
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
